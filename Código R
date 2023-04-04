@@ -1,0 +1,79 @@
+#cargar los paquetes necesarios para trabajar con los datos
+> install.packages("tidyverse")
+> library(tidyverse)
+
+#directorio con el que trabajamos
+> getwd()
+[1] "C:/Users/Marina/Documents"
+> setwd("/Users/Marina/Documents")
+
+#cargar los archivos con los que vamos a trabajar
+> m12_2022<-read.csv("diemb_divvy_tripdata.csv")
+> m11_2022<-read.csv("noviem_divvy_tripdata.csv")
+> m10_2022<-read.csv("octu_divvy_tripdata.csv")
+> m9_2022<-read.csv("sept_divvy_tripdata.csv")
+> m8_2022<-read.csv("agosto_divvy_tripdata.csv")
+
+#nombres de las columnas para comprobar que todas tengan el mismo
+> colnames(m12_2022)
+> colnames(m11_2022)
+> colnames(m10_2022)
+> colnames(m9_2022)
+> colnames(m8_2022)
+
+#todas las tablas tienen la mismas columnas, creamos una unica tabla
+> all_months<-bind_rows(m12_2022, m11_2022, m10_2022, m9_2022, m8_2022)
+
+#separamos en columnas la fecha, el dia, el mes, el año y el dia de la semana
+> all_months$date <- as.Date(all_months$started_at)
+> all_months$month <- format(as.Date(all_months$date), "%m")
+> all_months$day <- format(as.Date(all_months$date), "%d")
+> all_months$year <- format(as.Date(all_months$date), "%Y")
+> all_months$day_of_week <- format(as.Date(all_months$date), "%A")
+
+#calculo de duracion de los viajes en segundos
+> all_months$ride_length <- difftime(all_months$ended_at,all_months$started_at)
+
+#cambiamos la columna (ride_length) a valor numerico para operar con ella
+> is.factor(all_months$ride_length)
+> all_months$ride_length <- as.numeric(as.character(all_months$ride_length))
+> is.numeric(all_months$ride_length)
+
+#limpiar datos
+> all_months_v2 <- all_months[!(all_months$start_station_name == "HQ QR" | all_months$ride_length<0),]
+
+#analisis descriptivo
+> mean(all_months_v2$ride_length)
+> median(all_months_v2$ride_length)
+> max(all_months_v2$ride_length)
+> min(all_months_v2$ride_length)
+
+#comparar los dos tipos de usuarios
+> aggregate(all_months_v2$ride_length ~ all_months_v2$member_casual, FUN = mean)
+> aggregate(all_months_v2$ride_length ~ all_months_v2$member_casual, FUN = median)
+> aggregate(all_months_v2$ride_length ~ all_months_v2$member_casual, FUN = max)
+> aggregate(all_months_v2$ride_length ~ all_months_v2$member_casual, FUN = min)
+
+#comparar la duracion de los viajes de cada usuario en los diferentes dias de la semana
+> aggregate(all_months_v2$ride_length ~ all_months_v2$member_casual + all_months_v2$day_of_week, FUN = mean)
+> all_months_v2$day_of_week <- ordered(all_months_v2$day_of_week, levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+#grafica, catidad de viajes segun usuario
+> all_months_v2 %>% 
++     mutate(weekday = wday(started_at, label = TRUE)) %>% 
++     group_by(member_casual, weekday) %>% 
++     summarise(number_of_rides = n()
++               ,average_duration = mean(ride_length)) %>% 
++     arrange(member_casual, weekday)  %>% 
++     ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
++     geom_col(position = "dodge") + labs("WeekDay vs Nuber of Rides")
+
+#duación de viaje por usuario
+> all_months_v2 %>% 
++     mutate(weekday = wday(started_at, label = TRUE)) %>% 
++     group_by(member_casual, weekday) %>% 
++     summarise(number_of_rides = n()
++               ,average_duration = mean(ride_length)) %>% 
++     arrange(member_casual, weekday)  %>% 
++     ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
++     geom_col(position = "dodge") + labs("WeekDay vs Average Duration")
